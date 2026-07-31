@@ -12,7 +12,6 @@ const firebaseConfig = {
   appId: "1:166750053022:web:c41b155c7d3ce27e59518f"
 };
 
-// Pastikan konfigurasi tidak kosong
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
@@ -37,8 +36,7 @@ export default function App() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      // Menampilkan pesan error yang lebih jelas untuk diagnosa
-      setError(err.message || "Gagal masuk. Periksa kembali kredensial Anda.");
+      setError(err.message || "Gagal masuk.");
     } finally {
       setLoading(false);
     }
@@ -91,3 +89,4 @@ export default function App() {
     </div>
   );
 }
+```eof
