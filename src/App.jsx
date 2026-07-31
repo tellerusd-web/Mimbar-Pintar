@@ -19,11 +19,21 @@ const firebaseConfig = {
   appId: "1:847492025404:web:f136201f7e8bde65a1c739"
 };
 
+// ==========================================
+// 2. DAFTAR EMAIL PEMBELI (FILTER AKSES)
+// ==========================================
+// Tambahkan email pelanggan yang beli aplikasi Boss ke dalam tanda kutip di bawah ini
+const ALLOWED_EMAILS = [
+  "rais.abdull@gmail.com", 
+  "pembeli1@gmail.com",
+  "pembeli2@gmail.com"
+];
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 // ==========================================
-// 2. KOMPONEN UTAMA APLIKASI
+// 3. KOMPONEN UTAMA APLIKASI
 // ==========================================
 export default function App() {
   // State Auth
@@ -57,7 +67,15 @@ export default function App() {
   // Pantau status login
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      // Pastikan user yang tersimpan di sesi tetap ada di daftar ALLOWED_EMAILS
+      if (currentUser && ALLOWED_EMAILS.includes(currentUser.email.toLowerCase())) {
+        setUser(currentUser);
+      } else if (currentUser) {
+        signOut(auth);
+        setUser(null);
+      } else {
+        setUser(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -72,13 +90,23 @@ export default function App() {
     }
   }, [user]);
 
-  // Fungsi Login Firebase
+  // Fungsi Login Firebase + FILTER EMAIL
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsAuthLoading(true);
     setAuthError("");
+    
+    const inputEmail = email.trim().toLowerCase();
+
+    // CEK FILTER EMAIL: Apakah email ada di daftar ALLOWED_EMAILS?
+    if (!ALLOWED_EMAILS.includes(inputEmail)) {
+      setAuthError("Akses Ditolak: Email Anda belum terdaftar sebagai pembeli lisensi aplikasi ini.");
+      setIsAuthLoading(false);
+      return;
+    }
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, inputEmail, password);
     } catch (err) {
       setAuthError("Login gagal. Periksa kembali email dan password Anda.");
     } finally {
@@ -131,7 +159,7 @@ export default function App() {
     return guidelines[type] || `- Muqaddimah Tematik Arab, Sapaan hangat, Masalah audiens, Dalil, Kisah, Refleksi, Pesan praktis, Doa singkat`;
   };
 
-  const fetchWithRetry = async (url, options, retries = 5, delay = 1000) => {
+  const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
     for (let i = 0; i < retries; i++) {
       try {
         const res = await fetch(url, options);
@@ -145,7 +173,7 @@ export default function App() {
     }
   };
 
-  // Generate Referensi Tema (MENGGUNAKAN MODEL STABIL gemini-2.5-flash)
+  // Generate Referensi Tema (Menggunakan pengaturan "Sapu Jagat" lama)
   const generateTrendingThemes = async () => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setIsLoadingThemes(true); setAppError(null); setThemes([]);
@@ -195,7 +223,7 @@ export default function App() {
         if (parsed.themes) setThemes(parsed.themes);
       }
     } catch (err) {
-      setAppError(`Gagal mengambil tema: ${err.message}`);
+      setAppError(`Gagal mengambil tema AI: Pastikan API Key valid dan koneksi stabil. (${err.message})`);
     } finally {
       setIsLoadingThemes(false);
     }
@@ -214,7 +242,7 @@ export default function App() {
     generateKhutbahContent(syntheticTheme);
   };
 
-  // Generate Khutbah dengan Prompt Bersaja' & Isu Viral (MENGGUNAKAN MODEL STABIL gemini-2.5-flash)
+  // Generate Khutbah (Pengaturan "Sapu Jagat" + Muqaddimah Bersaja + Isu Viral)
   const generateKhutbahContent = async (theme) => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setSelectedTheme(theme); setIsLoadingKhutbah(true); setKhutbahContent(""); setAppError(null);
@@ -242,9 +270,9 @@ export default function App() {
       const data = await fetchWithRetry(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (responseText) setKhutbahContent(responseText);
-      else setAppError(`Gagal menghasilkan naskah.`);
+      else setAppError(`Gagal menghasilkan naskah. API Key mungkin kehabisan kuota.`);
     } catch (err) {
-      setAppError(`Terjadi kesalahan: ${err.message}`);
+      setAppError(`Terjadi kesalahan sistem: ${err.message}`);
     } finally {
       setIsLoadingKhutbah(false);
     }
@@ -297,10 +325,11 @@ export default function App() {
             <ShieldCheck className="w-16 h-16 text-emerald-600" />
           </div>
           <h2 className="text-2xl font-bold text-center mb-6 text-slate-800">Mimbar Pintar Pro</h2>
+          
           <form onSubmit={handleLogin} className="space-y-4">
             <input 
               className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all" 
-              type="email" placeholder="Email Akun" required 
+              type="email" placeholder="Email Terdaftar" required 
               onChange={(e) => setEmail(e.target.value)} 
             />
             <input 
@@ -315,6 +344,7 @@ export default function App() {
               {isAuthLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Masuk Aplikasi"}
             </button>
           </form>
+          
           {authError && (
             <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -332,7 +362,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
       
-      {/* MODAL PENGATURAN API KEY GEMINI */}
+      {/* MODAL PENGATURAN API KEY GEMINI (DESAIN SS2) */}
       {showApiModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
