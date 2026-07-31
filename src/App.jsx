@@ -94,7 +94,7 @@ export default function App() {
     setKhutbahContent("");
   };
 
-  // Fungsi Simpan API Key (Diperbarui sesuai SS2)
+  // Fungsi Simpan API Key
   const saveApiKey = () => {
     setApiError("");
     const key = userApiKey.trim();
@@ -145,12 +145,12 @@ export default function App() {
     }
   };
 
-  // Generate Referensi Tema
+  // Generate Referensi Tema (MENGGUNAKAN MODEL STABIL gemini-2.5-flash)
   const generateTrendingThemes = async () => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setIsLoadingThemes(true); setAppError(null); setThemes([]);
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
     const topicFocus = customTopic.trim() 
       ? `dengan FOKUS KHUSUS pada isu/tema: "${customTopic}". Cari berita atau tren terbaru yang berkaitan dengan topik tersebut.` 
       : `secara umum dari berbagai bidang (Ekonomi, Sosial, Keluarga, Teknologi, Akhlak).`;
@@ -214,12 +214,12 @@ export default function App() {
     generateKhutbahContent(syntheticTheme);
   };
 
-  // Generate Khutbah dengan Prompt Baru (Bersaja' & Isu Viral)
+  // Generate Khutbah dengan Prompt Bersaja' & Isu Viral (MENGGUNAKAN MODEL STABIL gemini-2.5-flash)
   const generateKhutbahContent = async (theme) => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setSelectedTheme(theme); setIsLoadingKhutbah(true); setKhutbahContent(""); setAppError(null);
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
     const structureRule = getStructureGuideline(eventType, khutbahStyle);
 
     const promptText = `
@@ -332,7 +332,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
       
-      {/* MODAL PENGATURAN API KEY GEMINI (DESAIN SS2 BARU) */}
+      {/* MODAL PENGATURAN API KEY GEMINI */}
       {showApiModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
