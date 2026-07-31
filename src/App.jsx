@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// 1. KONFIGURASI FIREBASE (PASTIKAN API KEY BENAR)
+// 1. KONFIGURASI FIREBASE
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyDBRDRU5cSPSu4-HSaQ2Idxv9s63YnwLxk", // <-- MASUKKAN API KEY FIREBASE BOSS DI SINI
@@ -26,16 +26,17 @@ const auth = getAuth(app);
 // 2. KOMPONEN UTAMA APLIKASI
 // ==========================================
 export default function App() {
-  // State untuk Auth (Firebase)
+  // State Auth
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [user, setUser] = useState(null);
 
-  // State untuk Aplikasi Generator Khutbah
+  // State Aplikasi Khutbah
   const [userApiKey, setUserApiKey] = useState("");
   const [showApiModal, setShowApiModal] = useState(false);
+  const [apiError, setApiError] = useState(""); 
   const [eventType, setEventType] = useState("Khutbah Jumat");
   const [khutbahStyle, setKhutbahStyle] = useState("Umum");
   const [customTopic, setCustomTopic] = useState(""); 
@@ -53,7 +54,7 @@ export default function App() {
     "Tausiyah Umum", "Kultum Singkat", "Ceramah Kajian", "Tausiyah Hari Besar Islam"
   ];
 
-  // Efek untuk memantau status login
+  // Pantau status login
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -61,7 +62,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Efek untuk mengambil API Key Gemini dari LocalStorage
+  // Pantau API Key di LocalStorage
   useEffect(() => {
     const storedKey = localStorage.getItem('mimbar_api_key');
     if (storedKey) {
@@ -85,7 +86,7 @@ export default function App() {
     }
   };
 
-  // Fungsi Logout Firebase
+  // Fungsi Logout
   const handleLogout = async () => {
     await signOut(auth);
     setThemes([]);
@@ -93,19 +94,21 @@ export default function App() {
     setKhutbahContent("");
   };
 
-  // Fungsi Simpan API Key Gemini
+  // Fungsi Simpan API Key (Diperbarui sesuai SS2)
   const saveApiKey = () => {
-    if (!userApiKey.trim()) {
-      setAppError("API Key tidak boleh kosong!");
-      setTimeout(() => setAppError(null), 3000);
+    setApiError("");
+    const key = userApiKey.trim();
+    
+    if (!key) {
+      setApiError("API Key tidak boleh kosong!");
       return;
     }
-    if (!userApiKey.trim().startsWith("AIza")) {
-      setAppError("Format API Key tidak valid. Pastikan diawali dengan 'AIza...'");
-      setTimeout(() => setAppError(null), 3000);
+    if (!key.startsWith("AIza")) {
+      setApiError("Format API Key tidak valid. Pastikan diawali dengan 'AIza...'");
       return;
     }
-    localStorage.setItem('mimbar_api_key', userApiKey.trim());
+    
+    localStorage.setItem('mimbar_api_key', key);
     setShowApiModal(false);
     showToast("API Key berhasil disimpan!");
   };
@@ -123,13 +126,9 @@ export default function App() {
     const guidelines = {
       "Khutbah Jumat": `- Judul\n- KHUTBAH PERTAMA: Muqaddimah Tematik Arab Bersajak, Pengantar masalah jamaah, Dalil utama, Pembahasan inti 2–3 poin, Refleksi ruhiyah, Solusi praktis, Penutup khutbah pertama.\n${khutbahKeduaRule}`,
       "Khutbah Idul Fitri": `- Takbir pembuka (Arab)\n- KHUTBAH PERTAMA: Muqaddimah Tematik Arab, Wasiat takwa, Makna kemenangan setelah Ramadan, Refleksi diri, Pesan menjaga amal, Pesan persaudaraan, Solusi amal\n${khutbahKeduaRule}`,
-      "Khutbah Idul Adha": `- Takbir pembuka yang kuat (Arab)\n- KHUTBAH PERTAMA: Muqaddimah Tematik Arab, Wasiat takwa, Pengantar Idul Adha, Keresahan jamaah, Kisah Ibrahim terarah, Pembahasan inti, Solusi praktis\n${khutbahKeduaRule}`,
-      "Tausiyah Umum": `- Muqaddimah Tematik Arab, Sapaan hangat, Masalah audiens, Dalil, Kisah, Refleksi, Pesan praktis, Doa singkat`,
-      "Kultum Singkat": `- Muqaddimah singkat, Satu keresahan utama, Satu dalil, Penjelasan, Satu pesan inti, Satu amal praktis, Penutup`,
-      "Ceramah Kajian": `- Muqaddimah Tematik Arab, Peta pembahasan, Definisi tema, Dalil, Penjelasan ilmiah & ruhiyah, Solusi praktis, Kesimpulan, Doa`,
-      "Tausiyah Hari Besar Islam": `- Muqaddimah Tematik Arab disesuaikan dengan momen hari besar, dalil, kisah, suasana emosional, pesan amal.`
+      "Khutbah Idul Adha": `- Takbir pembuka yang kuat (Arab)\n- KHUTBAH PERTAMA: Muqaddimah Tematik Arab, Wasiat takwa, Pengantar Idul Adha, Keresahan jamaah, Kisah Ibrahim terarah, Pembahasan inti, Solusi praktis\n${khutbahKeduaRule}`
     };
-    return guidelines[type] || guidelines["Tausiyah Umum"];
+    return guidelines[type] || `- Muqaddimah Tematik Arab, Sapaan hangat, Masalah audiens, Dalil, Kisah, Refleksi, Pesan praktis, Doa singkat`;
   };
 
   const fetchWithRetry = async (url, options, retries = 5, delay = 1000) => {
@@ -157,14 +156,10 @@ export default function App() {
       : `secara umum dari berbagai bidang (Ekonomi, Sosial, Keluarga, Teknologi, Akhlak).`;
 
     const promptText = `
-      Buatkan naskah ${eventType} lengkap. Judul: ${theme.title}. Konteks: ${theme.trending_reason}.
-      TUGAS UTAMA: 
-      1. STRUKTUR: ${structureRule}
-      - JIKA KHUTBAH (Jumat/Idul Fitri/Idul Adha): Tuliskan "KHUTBAH PERTAMA" dan "KHUTBAH KEDUA" sebagai pemisah.
-      2. MUQADDIMAH: WAJIB MENGGUNAKAN BAHASA ARAB berharakat penuh, tematik, dan BERSAJA' (berima/sajak Arab yang indah).
-      3. ISI & KONTEKSTUALISASI: Setiap penjelasan materi dan dalil WAJIB dihubungkan dengan tren, isu yang sedang viral, atau realitas masyarakat saat ini (merujuk pada konteks: ${theme.trending_reason}). Buat jamaah merasa bahwa khutbah ini sangat "relate" dengan kehidupan nyata mereka sekarang.
-      4. KEDALAMAN: Masukkan tinjauan spiritual (ruhiyah), kisah teladan, dan solusi praktis yang bisa langsung diamalkan.
-      5. BERSIH: Jangan gunakan simbol markdown (* atau #). Jangan ada kata pengantar dari AI. Naskah harus langsung berwujud khutbah utuh yang siap baca.
+      Gunakan alat pencarian Google (Google Search) untuk:
+      1. Mencari berita utama, tren sosial, dan isu terkini di masyarakat Indonesia minggu ini, ${topicFocus}
+      2. Mengidentifikasi momen keagamaan Islam yang sedang berlangsung atau berdekatan saat ini.
+      Berdasarkan informasi tersebut, buatkan 10 ide tema ${eventType} yang relevan.
     `;
 
     const payload = {
@@ -219,6 +214,7 @@ export default function App() {
     generateKhutbahContent(syntheticTheme);
   };
 
+  // Generate Khutbah dengan Prompt Baru (Bersaja' & Isu Viral)
   const generateKhutbahContent = async (theme) => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setSelectedTheme(theme); setIsLoadingKhutbah(true); setKhutbahContent(""); setAppError(null);
@@ -231,9 +227,10 @@ export default function App() {
       TUGAS UTAMA: 
       1. STRUKTUR: ${structureRule}
       - JIKA KHUTBAH (Jumat/Idul Fitri/Idul Adha): Tuliskan "KHUTBAH PERTAMA" dan "KHUTBAH KEDUA" sebagai pemisah.
-      2. MUQADDIMAH: WAJIB BAHASA ARAB berharakat penuh, tematik, dan bersajak indah.
-      3. ISI: Lapisan Realitas, Ruhiyah, Wahyu, Kisah, dan Solusi Praktis mendalam.
-      4. BERSIH: Jangan gunakan simbol markdown (* atau #). Jangan tulis kata "Lapisan Realitas:" di teks. Naskah harus siap baca.
+      2. MUQADDIMAH: WAJIB MENGGUNAKAN BAHASA ARAB berharakat penuh, tematik, dan BERSAJA' (berima/sajak Arab yang indah).
+      3. ISI & KONTEKSTUALISASI: Setiap penjelasan materi dan dalil WAJIB dihubungkan dengan tren, isu yang sedang viral, atau realitas masyarakat saat ini (merujuk pada konteks: ${theme.trending_reason}). Buat jamaah merasa bahwa khutbah ini sangat "relate" dengan kehidupan nyata mereka sekarang.
+      4. KEDALAMAN: Masukkan tinjauan spiritual (ruhiyah), kisah teladan, dan solusi praktis yang bisa langsung diamalkan.
+      5. BERSIH: Jangan gunakan simbol markdown (* atau #). Jangan ada kata pengantar dari AI. Naskah harus langsung berwujud khutbah utuh yang siap baca.
     `;
 
     const payload = {
@@ -256,7 +253,7 @@ export default function App() {
   useEffect(() => {
     let interval;
     if (isLoadingKhutbah) {
-      const steps = ["Membangun struktur Khutbah...", "Merangkai Muqaddimah Arab...", "Menggali Kedalaman Materi...", "Membersihkan format naskah..."];
+      const steps = ["Membangun struktur Khutbah...", "Merangkai Muqaddimah Arab Bersaja'...", "Menganalisis Isu Viral Terkini...", "Membersihkan format naskah..."];
       let i = 0; setLoadingStep(steps[0]);
       interval = setInterval(() => { i++; if (i < steps.length) setLoadingStep(steps[i]); }, 3000);
     }
@@ -290,7 +287,7 @@ export default function App() {
   };
 
   // ==========================================
-  // TAMPILAN 1: HALAMAN LOGIN (Jika belum login)
+  // UI 1: HALAMAN LOGIN
   // ==========================================
   if (!user) {
     return (
@@ -330,29 +327,56 @@ export default function App() {
   }
 
   // ==========================================
-  // TAMPILAN 2: APLIKASI UTAMA (Jika sudah login)
+  // UI 2: APLIKASI UTAMA (GENERATOR)
   // ==========================================
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
       
-      {/* MODAL PENGATURAN API KEY GEMINI */}
+      {/* MODAL PENGATURAN API KEY GEMINI (DESAIN SS2 BARU) */}
       {showApiModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
                 <Key className="w-8 h-8 text-emerald-600" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">Google AI API Key</h2>
-              <p className="text-slate-600 text-sm mb-6">Masukkan API Key Gemini Anda untuk mulai membuat naskah.</p>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">Pengaturan API Key</h2>
+              <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                Aplikasi ini membutuhkan API Key dari Google AI Studio. Key akan disimpan secara aman di browser Anda (Local Storage).
+              </p>
+              
+              {apiError && (
+                <div className="w-full mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm flex items-center gap-2 text-left">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{apiError}</span>
+                </div>
+              )}
+
               <input 
-                type="password" value={userApiKey} onChange={(e) => setUserApiKey(e.target.value)}
-                placeholder="AIzaSy..."
-                className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 text-center mb-4"
+                type="text" 
+                value={userApiKey} 
+                onChange={(e) => {
+                  setUserApiKey(e.target.value);
+                  setApiError(""); // Hilangkan error otomatis saat ngetik
+                }}
+                placeholder="Mulai dengan 'AIzaSy...'"
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none mb-4 text-slate-700"
               />
-              <button onClick={saveApiKey} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl">
-                Simpan Konfigurasi
+              <button 
+                onClick={saveApiKey} 
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-all shadow-md mb-4"
+              >
+                Simpan API Key
               </button>
+              
+              <a 
+                href="https://aistudio.google.com/app/apikey" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-emerald-600 hover:text-emerald-700 text-sm font-medium hover:underline"
+              >
+                Belum punya? Dapatkan gratis di sini
+              </a>
             </div>
             {localStorage.getItem('mimbar_api_key') && (
               <button onClick={() => setShowApiModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">✕</button>
