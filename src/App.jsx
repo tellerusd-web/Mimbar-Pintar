@@ -4,12 +4,12 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { Loader2, AlertCircle, BookOpen, ShieldCheck } from 'lucide-react';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCwQYXADulyEQFqJyO08xH9p8zZWL45o08", 
-  authDomain: "mimbar-pintar.firebaseapp.com",
-  projectId: "mimbar-pintar",
-  storageBucket: "mimbar-pintar.firebasestorage.app",
-  messagingSenderId: "166750053022",
-  appId: "1:166750053022:web:c41b155c7d3ce27e59518f"
+  apiKey: "AIzaSyDBRDRU5cSPSu4-HSaQ2Idxv9s63YnwLxk",
+  authDomain: "mimbar-pintar-baru.firebaseapp.com",
+  projectId: "mimbar-pintar-baru",
+  storageBucket: "mimbar-pintar-baru.firebasestorage.app",
+  messagingSenderId: "847492025404",
+  appId: "1:847492025404:web:f136201f7e8bde65a1c739"
 };
 
 const app = initializeApp(firebaseConfig);
