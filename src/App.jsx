@@ -10,9 +10,9 @@ import {
 // ==========================================
 // 1. KONFIGURASI FIREBASE
 // ==========================================
-// PENTING: Ganti dengan API Key milik Boss di bawah ini
+// Ganti tulisan di bawah dengan API Key Firebase milik Boss
 const firebaseConfig = {
-  apiKey: "AIzaSyDBRDRU5cSPSu4-HSaQ2Idxv9s63YnwLxk", 
+  apiKey: ""AIzaSyDBRDRU5cSPSu4-HSaQ2Idxv9s63YnwLxk"", 
   authDomain: "mimbar-pintar-baru.firebaseapp.com",
   projectId: "mimbar-pintar-baru",
   storageBucket: "mimbar-pintar-baru.appspot.com",
@@ -20,18 +20,18 @@ const firebaseConfig = {
   appId: "1:847492025404:web:f136201f7e8bde65a1c739"
 };
 
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
 // ==========================================
 // 2. DAFTAR EMAIL PEMBELI (FILTER AKSES)
 // ==========================================
-// Tambahkan email pelanggan yang beli aplikasi Boss di bawah ini
+// HANYA email di bawah ini yang bisa login ke aplikasi
 const ALLOWED_EMAILS = [
   "rais.abdull@gmail.com", 
   "pembeli1@gmail.com",
   "pembeli2@gmail.com"
 ];
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 
 // ==========================================
 // 3. KOMPONEN UTAMA APLIKASI
@@ -65,13 +65,13 @@ export default function App() {
     "Tausiyah Umum", "Kultum Singkat", "Ceramah Kajian", "Tausiyah Hari Besar Islam"
   ];
 
-  // Pantau status login & filter email
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // Pastikan user yang masuk benar-benar ada di daftar ALLOWED_EMAILS
+      // PENTING: Cek apakah user ada dan emailnya terdaftar di ALLOWED_EMAILS
       if (currentUser && ALLOWED_EMAILS.includes(currentUser.email.toLowerCase())) {
         setUser(currentUser);
       } else if (currentUser) {
+        // Jika login benar tapi email tidak ada di daftar, paksa keluar
         signOut(auth);
         setUser(null);
       } else {
@@ -81,7 +81,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Pantau API Key di LocalStorage
   useEffect(() => {
     const storedKey = localStorage.getItem('mimbar_api_key');
     if (storedKey) {
@@ -91,7 +90,6 @@ export default function App() {
     }
   }, [user]);
 
-  // Fungsi Login Firebase dengan Filter
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsAuthLoading(true);
@@ -99,9 +97,9 @@ export default function App() {
     
     const inputEmail = email.trim().toLowerCase();
 
-    // CEK FILTER EMAIL: Tolak jika tidak ada di daftar
+    // CEK FILTER EMAIL SEBELUM LOGIN KE FIREBASE
     if (!ALLOWED_EMAILS.includes(inputEmail)) {
-      setAuthError("Akses Ditolak: Email Anda belum terdaftar sebagai pembeli lisensi aplikasi ini.");
+      setAuthError("Akses Ditolak: Email Anda belum terdaftar sebagai lisensi pembeli aplikasi ini.");
       setIsAuthLoading(false);
       return;
     }
@@ -115,7 +113,6 @@ export default function App() {
     }
   };
 
-  // Fungsi Logout
   const handleLogout = async () => {
     await signOut(auth);
     setThemes([]);
@@ -123,7 +120,6 @@ export default function App() {
     setKhutbahContent("");
   };
 
-  // Fungsi Simpan API Key
   const saveApiKey = () => {
     setApiError("");
     const key = userApiKey.trim();
@@ -177,25 +173,25 @@ export default function App() {
     }
   };
 
-  // Generate Referensi Tema (Mencegah error 400 dengan payload yang tepat)
   const generateTrendingThemes = async () => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setIsLoadingThemes(true); setAppError(null); setThemes([]);
 
+    // Menggunakan model Sapu Jagat (gemini-2.5-flash) yang stabil
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
     const topicFocus = customTopic.trim() 
       ? `dengan FOKUS KHUSUS pada isu/tema: "${customTopic}". Cari berita atau tren terbaru yang berkaitan dengan topik tersebut.` 
       : `secara umum dari berbagai bidang (Ekonomi, Sosial, Keluarga, Teknologi, Akhlak).`;
 
     const promptText = `
-      1. Cari berita utama, tren sosial, dan isu terkini di masyarakat Indonesia minggu ini, ${topicFocus}
+      1. Cari isu terkini dan tren di masyarakat Indonesia minggu ini, ${topicFocus}
       2. Identifikasi momen keagamaan Islam yang sedang berlangsung atau berdekatan saat ini.
       Berdasarkan informasi tersebut, buatkan 10 ide tema ${eventType} yang relevan.
     `;
 
+    // SOLUSI ERROR 400: Fitur "googleSearch" dihapus dari sini karena dilarang Google digunakan bersama "responseSchema" (JSON).
     const payload = {
       contents: [{ parts: [{ text: promptText }] }],
-      tools: [{ googleSearch: {} }], 
       systemInstruction: { parts: [{ text: `Kamu adalah ulama dan pakar pembuat ide tema ${eventType} yang bijak.` }] },
       generationConfig: {
         responseMimeType: "application/json",
@@ -226,7 +222,7 @@ export default function App() {
         if (parsed.themes) setThemes(parsed.themes);
       }
     } catch (err) {
-      setAppError(`Gagal mengambil tema: Pastikan API Key valid. (${err.message})`);
+      setAppError(`Gagal mengambil tema: Pastikan API Key valid dan koneksi stabil. (${err.message})`);
     } finally {
       setIsLoadingThemes(false);
     }
@@ -245,14 +241,15 @@ export default function App() {
     generateKhutbahContent(syntheticTheme);
   };
 
-  // Generate Khutbah (Paten: Muqaddimah Bersaja + Isu Viral)
   const generateKhutbahContent = async (theme) => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setSelectedTheme(theme); setIsLoadingKhutbah(true); setKhutbahContent(""); setAppError(null);
 
+    // Menggunakan model Sapu Jagat (gemini-2.5-flash) yang stabil
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
     const structureRule = getStructureGuideline(eventType, khutbahStyle);
 
+    // Prompt khusus Muqaddimah Bersaja' dan Isu Viral
     const promptText = `
       Buatkan naskah ${eventType} lengkap. Judul: ${theme.title}. Konteks: ${theme.trending_reason}.
       TUGAS UTAMA: 
