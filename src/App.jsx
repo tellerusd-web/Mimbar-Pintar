@@ -10,8 +10,9 @@ import {
 // ==========================================
 // 1. KONFIGURASI FIREBASE
 // ==========================================
+// PENTING: Ganti dengan API Key milik Boss di bawah ini
 const firebaseConfig = {
-  apiKey: "AIzaSyDBRDRU5cSPSu4-HSaQ2Idxv9s63YnwLxk", // <-- MASUKKAN API KEY FIREBASE BOSS DI SINI
+  apiKey: "AIzaSyDBRDRU5cSPSu4-HSaQ2Idxv9s63YnwLxk", 
   authDomain: "mimbar-pintar-baru.firebaseapp.com",
   projectId: "mimbar-pintar-baru",
   storageBucket: "mimbar-pintar-baru.appspot.com",
@@ -22,7 +23,7 @@ const firebaseConfig = {
 // ==========================================
 // 2. DAFTAR EMAIL PEMBELI (FILTER AKSES)
 // ==========================================
-// Tambahkan email pelanggan yang beli aplikasi Boss ke dalam tanda kutip di bawah ini
+// Tambahkan email pelanggan yang beli aplikasi Boss di bawah ini
 const ALLOWED_EMAILS = [
   "rais.abdull@gmail.com", 
   "pembeli1@gmail.com",
@@ -64,10 +65,10 @@ export default function App() {
     "Tausiyah Umum", "Kultum Singkat", "Ceramah Kajian", "Tausiyah Hari Besar Islam"
   ];
 
-  // Pantau status login
+  // Pantau status login & filter email
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // Pastikan user yang tersimpan di sesi tetap ada di daftar ALLOWED_EMAILS
+      // Pastikan user yang masuk benar-benar ada di daftar ALLOWED_EMAILS
       if (currentUser && ALLOWED_EMAILS.includes(currentUser.email.toLowerCase())) {
         setUser(currentUser);
       } else if (currentUser) {
@@ -90,7 +91,7 @@ export default function App() {
     }
   }, [user]);
 
-  // Fungsi Login Firebase + FILTER EMAIL
+  // Fungsi Login Firebase dengan Filter
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsAuthLoading(true);
@@ -98,7 +99,7 @@ export default function App() {
     
     const inputEmail = email.trim().toLowerCase();
 
-    // CEK FILTER EMAIL: Apakah email ada di daftar ALLOWED_EMAILS?
+    // CEK FILTER EMAIL: Tolak jika tidak ada di daftar
     if (!ALLOWED_EMAILS.includes(inputEmail)) {
       setAuthError("Akses Ditolak: Email Anda belum terdaftar sebagai pembeli lisensi aplikasi ini.");
       setIsAuthLoading(false);
@@ -163,7 +164,10 @@ export default function App() {
     for (let i = 0; i < retries; i++) {
       try {
         const res = await fetch(url, options);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        if (!res.ok) {
+           const errData = await res.json().catch(() => ({}));
+           throw new Error(errData.error?.message || `HTTP error! status: ${res.status}`);
+        }
         return await res.json();
       } catch (err) {
         if (i === retries - 1) throw err;
@@ -173,7 +177,7 @@ export default function App() {
     }
   };
 
-  // Generate Referensi Tema (Menggunakan pengaturan "Sapu Jagat" lama)
+  // Generate Referensi Tema (Mencegah error 400 dengan payload yang tepat)
   const generateTrendingThemes = async () => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setIsLoadingThemes(true); setAppError(null); setThemes([]);
@@ -184,15 +188,14 @@ export default function App() {
       : `secara umum dari berbagai bidang (Ekonomi, Sosial, Keluarga, Teknologi, Akhlak).`;
 
     const promptText = `
-      Gunakan alat pencarian Google (Google Search) untuk:
-      1. Mencari berita utama, tren sosial, dan isu terkini di masyarakat Indonesia minggu ini, ${topicFocus}
-      2. Mengidentifikasi momen keagamaan Islam yang sedang berlangsung atau berdekatan saat ini.
+      1. Cari berita utama, tren sosial, dan isu terkini di masyarakat Indonesia minggu ini, ${topicFocus}
+      2. Identifikasi momen keagamaan Islam yang sedang berlangsung atau berdekatan saat ini.
       Berdasarkan informasi tersebut, buatkan 10 ide tema ${eventType} yang relevan.
     `;
 
     const payload = {
       contents: [{ parts: [{ text: promptText }] }],
-      tools: [{ google_search: {} }], 
+      tools: [{ googleSearch: {} }], 
       systemInstruction: { parts: [{ text: `Kamu adalah ulama dan pakar pembuat ide tema ${eventType} yang bijak.` }] },
       generationConfig: {
         responseMimeType: "application/json",
@@ -223,7 +226,7 @@ export default function App() {
         if (parsed.themes) setThemes(parsed.themes);
       }
     } catch (err) {
-      setAppError(`Gagal mengambil tema AI: Pastikan API Key valid dan koneksi stabil. (${err.message})`);
+      setAppError(`Gagal mengambil tema: Pastikan API Key valid. (${err.message})`);
     } finally {
       setIsLoadingThemes(false);
     }
@@ -242,7 +245,7 @@ export default function App() {
     generateKhutbahContent(syntheticTheme);
   };
 
-  // Generate Khutbah (Pengaturan "Sapu Jagat" + Muqaddimah Bersaja + Isu Viral)
+  // Generate Khutbah (Paten: Muqaddimah Bersaja + Isu Viral)
   const generateKhutbahContent = async (theme) => {
     if (!userApiKey) { setShowApiModal(true); return; }
     setSelectedTheme(theme); setIsLoadingKhutbah(true); setKhutbahContent(""); setAppError(null);
